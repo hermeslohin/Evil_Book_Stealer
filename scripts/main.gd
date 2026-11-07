@@ -13,6 +13,7 @@ const SpikesScript := preload("res://scripts/spikes.gd")
 const CheckpointScript := preload("res://scripts/checkpoint.gd")
 const LevelArtScript := preload("res://scripts/level_art.gd")
 const HudScript := preload("res://scripts/hud.gd")
+const D := preload("res://scripts/difficulty.gd")
 
 # Survive scene reloads so "retry" resumes from the last checkpoint.
 static var resume_checkpoint = null
@@ -55,22 +56,51 @@ func _ready() -> void:
 	if resume_checkpoint != null:
 		hud.show_message("TRY AGAIN!", "Back at your last checkpoint.\n\nPress Space to continue")
 	else:
-		hud.show_message("THE EVIL BOOK STEALER",
-			"A hooded thief has stolen every book from the Grand Library!\n" +
-			"Recover the books, then chase him down and defeat him.\n\n" +
-			"Move: Arrows / WASD     Jump: Space / W / Z     Throw ink: J / X\n" +
-			"Stomp enemies by jumping on them!\n\n" +
-			"Press Space to begin     (or press 2 / 3 to skip to Level 2 / 3)")
+		_show_title()
+
+
+func _show_title() -> void:
+	var picks := []
+	for m in D.MODES:
+		picks.append(("[ %s ]" if m == D.mode else "  %s  ") % m.to_upper())
+	var blurb: String = {
+		"easy": "%d hearts, slower enemies, weaker bosses. Great for learning!",
+		"normal": "%d hearts. A real challenge.",
+		"hard": "%d hearts, fast tough enemies, huge bosses. Good luck!",
+	}[D.mode] % D.PLAYER_MAX_HP
+	hud.show_message("THE EVIL BOOK STEALER",
+		"A hooded thief has stolen every book from the Grand Library!\n" +
+		"Recover the books, then chase him down and defeat him.\n\n" +
+		"Move: Arrows / WASD     Jump: Space / W / Z     Throw ink: J / X\n" +
+		"Stomp enemies by jumping on them!\n\n" +
+		"Difficulty  (Left / Right):   %s\n%s\n\n" % ["   ".join(picks), blurb] +
+		"Press Space to begin     (or press 2 - 5 to skip to that level)")
 
 
 func _process(_delta: float) -> void:
 	match state:
 		"intro":
+			if resume_checkpoint == null:
+				var step := 0
+				if Input.is_action_just_pressed("move_left"):
+					step = -1
+				elif Input.is_action_just_pressed("move_right"):
+					step = 1
+				if step != 0 and D.MODES.find(D.mode) + step in range(D.MODES.size()):
+					D.cycle(step)
+					get_tree().reload_current_scene()   # rebuild the level with the new settings
+					return
 			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_2):
 				get_tree().change_scene_to_file("res://chase.tscn")   # skip straight to Level 2
 				return
 			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_3):
 				get_tree().change_scene_to_file("res://hack.tscn")    # skip straight to Level 3
+				return
+			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_4):
+				get_tree().change_scene_to_file("res://time.tscn")    # skip straight to Level 4
+				return
+			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_5):
+				get_tree().change_scene_to_file("res://future.tscn")  # skip straight to Level 5
 				return
 			if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 				state = "play"

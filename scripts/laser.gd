@@ -2,8 +2,9 @@ extends Area2D
 ## A security laser hanging from the ceiling. It flickers as a warning, then fires a
 ## beam straight down for a moment. Time your run through the gaps.
 
+const D := preload("res://scripts/difficulty.gd")
+
 const CYCLE := 2.6
-const WARN := 0.6      # flickering, harmless
 const FIRE := 1.0      # deadly beam
 
 var length := 160.0
@@ -30,11 +31,11 @@ func _cycle_pos() -> float:
 
 func firing() -> bool:
 	var c := _cycle_pos()
-	return c >= WARN and c < WARN + FIRE
+	return c >= D.LASER_WARN and c < D.LASER_WARN + FIRE
 
 
 func warning() -> bool:
-	return _cycle_pos() < WARN
+	return _cycle_pos() < D.LASER_WARN
 
 
 func _physics_process(delta: float) -> void:

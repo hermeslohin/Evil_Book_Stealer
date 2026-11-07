@@ -1,5 +1,5 @@
 extends Area2D
-## Collectible: a stolen book (or e-book), a heart that restores health, an ink bottle, or a growth mushroom.
+## Collectible: a stolen book (or e-book, or stone tablet), a heart that restores health, an ink bottle, or a growth mushroom.
 
 var kind := "book"
 var cell := Vector2i.ZERO
@@ -75,6 +75,20 @@ func _draw() -> void:
 			draw_rect(Rect2(bob + Vector2(-5, -7 + i * 4), Vector2(10 - (i % 2) * 3, 1.5)), Color(0.15, 0.15, 0.25))
 		draw_circle(bob + Vector2(0, 10), 1.2, glow)
 		draw_rect(Rect2(bob + Vector2(-9, -12), Vector2(18, 24)), glow, false, 1.0)
+	elif kind == "tablet":
+		var stone := Color(0.66, 0.63, 0.58)
+		draw_circle(bob, 15.0, Color(1, 0.9, 0.5, 0.15 + 0.08 * sin(t * 5.0)))
+		draw_colored_polygon(PackedVector2Array([bob + Vector2(-9, -8), bob + Vector2(-5, -12), bob + Vector2(5, -12),
+			bob + Vector2(9, -8), bob + Vector2(9, 12), bob + Vector2(-9, 12)]), stone)
+		draw_rect(Rect2(bob + Vector2(-9, -8), Vector2(3, 20)), stone.darkened(0.2))
+		# carved picture-writing: a sun, a stick figure and a wavy line
+		var cut := stone.darkened(0.45)
+		draw_arc(bob + Vector2(-1, -5), 3.0, 0, TAU, 10, cut, 1.5)
+		draw_line(bob + Vector2(4, -2), bob + Vector2(4, 4), cut, 1.5)
+		draw_circle(bob + Vector2(4, -3), 1.5, cut)
+		draw_line(bob + Vector2(2, 1), bob + Vector2(6, 1), cut, 1.2)
+		for i in 3:
+			draw_line(bob + Vector2(-6 + i * 4, 8 - (i % 2) * 2), bob + Vector2(-2 + i * 4, 8 - ((i + 1) % 2) * 2), cut, 1.2)
 	elif kind == "big":
 		var cap := Color(0.65, 0.3, 0.95)
 		draw_circle(bob, 17.0, Color(0.8, 0.5, 1.0, 0.15 + 0.08 * sin(t * 5.0)))

@@ -1,4 +1,5 @@
 extends CanvasLayer
+const D := preload("res://scripts/difficulty.gd")
 ## Hearts, book counter, boss health bar, banners and the big message box.
 
 var hearts := 5
@@ -163,6 +164,8 @@ func _draw_hud() -> void:
 	canvas.draw_rect(Rect2(bp + Vector2(15, 2), Vector2(2, 18)), Color(0.95, 0.92, 0.8))
 	canvas.draw_string_outline(font, bp + Vector2(26, 19), "%d / %d" % [books, books_total], HORIZONTAL_ALIGNMENT_LEFT, -1, 22, 6, Color(0, 0, 0))
 	canvas.draw_string(font, bp + Vector2(26, 19), "%d / %d" % [books, books_total], HORIZONTAL_ALIGNMENT_LEFT, -1, 22, Color(1, 0.95, 0.8))
+	canvas.draw_string_outline(font, bp + Vector2(0, 42), D.label(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, 4, Color(0, 0, 0))
+	canvas.draw_string(font, bp + Vector2(0, 42), D.label(), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, D.color())
 
 	if invincible_t > 0.0:
 		var sw := 160.0

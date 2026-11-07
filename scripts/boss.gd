@@ -2,11 +2,13 @@ extends CharacterBody2D
 ## The Evil Book Stealer. Hurls stolen books, leaps at you, and charges across the arena.
 ## Stomp his head (2 damage) or hit him with ink (1 damage, 2 while he's dizzy).
 
+const D := preload("res://scripts/difficulty.gd")
+
 const GRAVITY := 1500.0
 const ProjectileScript := preload("res://scripts/projectile.gd")
 
-var max_hp := 18
-var hp := 18
+var max_hp := roundi(18 * D.BOSS_HP)
+var hp := max_hp
 var active := false
 var dead := false
 var state := "idle"
@@ -62,6 +64,7 @@ func _face_player() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= D.BOSS_TEMPO
 	t += delta
 	flash = max(flash - delta, 0.0)
 	stomp_cd = max(stomp_cd - delta, 0.0)

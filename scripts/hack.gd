@@ -90,7 +90,7 @@ func _process(_delta: float) -> void:
 			if hud.message_visible() and (Input.is_action_just_pressed("restart") or Input.is_action_just_pressed("ui_accept")):
 				if state == "won":
 					_clear_resume()
-					get_tree().change_scene_to_file("res://main.tscn")
+					get_tree().change_scene_to_file("res://time.tscn")   # on to Level 4!
 				else:
 					get_tree().reload_current_scene()
 		_:
@@ -444,9 +444,9 @@ func on_boss_defeated(pos: Vector2) -> void:
 	hud.show_message("YOU HACKED THE MAINFRAME!",
 		"The Evil Book Stealer's supercomputer crashes in a shower of sparks!\n" +
 		"Every e-book downloads safely back to the Grand Library's servers.\n" +
-		"No book, paper or digital, is safe from YOU, Librarian!\n\n" +
+		"But the crash rips open a swirling TIME PORTAL... and the Book Stealer dives in!\n\n" +
 		"E-books recovered: %d / %d\n\n" % [books_collected, books_total] +
-		"Press R or Enter to play again from Level 1")
+		"Press Enter to jump into the portal after him!")
 
 
 # ---------------------------------------------------------------- effects

@@ -1,11 +1,13 @@
 extends CharacterBody2D
-## A bookworm henchman that patrols back and forth. Stomp it or ink it twice.
+## A bookworm henchman that patrols back and forth. Stomp it or ink it a few times.
+
+const D := preload("res://scripts/difficulty.gd")
 
 const GRAVITY := 1400.0
 
 var dir := -1
-var speed := 60.0
-var hp := 2
+var speed := 60.0 * D.ENEMY_SPEED
+var hp := 2 + D.ENEMY_HP_BONUS
 var dead := false
 var t := 0.0
 var flash := 0.0
@@ -33,6 +35,7 @@ func get_top_y() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= D.ENEMY_TEMPO
 	t += delta
 	flash = max(flash - delta, 0.0)
 	if dead:

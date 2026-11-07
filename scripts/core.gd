@@ -3,14 +3,16 @@ extends CharacterBody2D
 ## It's shielded until you hack one of the chamber's terminals. Then it's open for a
 ## few seconds: ink it or stomp it! Each hit spills e-books. It gets angrier as it breaks.
 
+const D := preload("res://scripts/difficulty.gd")
+
 const ProjectileScript := preload("res://scripts/projectile.gd")
 const DroneScript := preload("res://scripts/drone.gd")
 const SHIELD_DOWN_TIME := 5.0
 const HITS_PER_WINDOW := 2
 const BOOKS_PER_HIT := 2
 
-var max_hp := 6
-var hp := 6
+var max_hp := roundi(6 * D.BOSS_HP)
+var hp := max_hp
 var active := false
 var dead := false
 var shielded := true
@@ -80,6 +82,7 @@ func _raise_shield() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= D.BOSS_TEMPO
 	t += delta
 	flash = max(flash - delta, 0.0)
 	stomp_cd = max(stomp_cd - delta, 0.0)
@@ -137,7 +140,7 @@ func _fire_spread() -> void:
 		var p = ProjectileScript.new()
 		p.team = "enemy"
 		p.kind = "bit"
-		p.vel = aim.rotated(ang) * 230.0
+		p.vel = aim.rotated(ang) * 230.0 * D.ENEMY_SHOT_SPEED
 		p.life = 3.5
 		p.position = origin
 		get_parent().add_child(p)

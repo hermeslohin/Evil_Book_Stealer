@@ -1,6 +1,8 @@
 extends CharacterBody2D
 ## A flying security drone. Patrols back and forth, scans for intruders, and fires
-## bits of binary at you. Stomp it or ink it once.
+## bits of binary at you. Stomp it or ink it twice.
+
+const D := preload("res://scripts/difficulty.gd")
 
 const ProjectileScript := preload("res://scripts/projectile.gd")
 const PATROL := 90.0          # half-width of the patrol path
@@ -8,7 +10,7 @@ const RANGE := 340.0
 const WINDUP := 0.5
 const COOLDOWN := 1.8
 
-var hp := 1
+var hp := 1 + D.ENEMY_HP_BONUS
 var dead := false
 var dir := -1
 var t := 0.0
@@ -38,6 +40,7 @@ func get_top_y() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= D.ENEMY_TEMPO
 	t += delta
 	flash = max(flash - delta, 0.0)
 	if dead:
@@ -84,7 +87,7 @@ func _fire() -> void:
 	var p = ProjectileScript.new()
 	p.team = "enemy"
 	p.kind = "bit"
-	p.vel = aim * 240.0
+	p.vel = aim * 240.0 * D.ENEMY_SHOT_SPEED
 	p.life = 3.0
 	p.position = origin
 	get_parent().add_child(p)

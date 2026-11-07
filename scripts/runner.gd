@@ -3,13 +3,15 @@ extends CharacterBody2D
 ## everything and tossing books back at you. Ink him (1 damage) or jump on his head (2 damage)
 ## to knock books out of his sack. At the dead-end alley he turns and makes a last stand.
 
+const D := preload("res://scripts/difficulty.gd")
+
 const GRAVITY := 1500.0
 const RUN_MIN_HP := 5   # can't be knocked below this until he's cornered
 const TILE := 32
 const ProjectileScript := preload("res://scripts/projectile.gd")
 
-var max_hp := 14
-var hp := 14
+var max_hp := roundi(14 * D.BOSS_HP)
+var hp := max_hp
 var active := false
 var dead := false
 var cornered := false
@@ -63,6 +65,7 @@ func corner() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= D.BOSS_TEMPO
 	t += delta
 	flash = max(flash - delta, 0.0)
 	stomp_cd = max(stomp_cd - delta, 0.0)

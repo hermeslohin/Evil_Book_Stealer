@@ -2,6 +2,8 @@ extends CharacterBody2D
 ## An ink-squirting squid. Stays put, spots you from afar, winds up, and lobs
 ## blobs of ink at you. Stomp it or ink it back (two hits).
 
+const D := preload("res://scripts/difficulty.gd")
+
 const GRAVITY := 1400.0
 const ProjectileScript := preload("res://scripts/projectile.gd")
 const INK_COLOR := Color(0.12, 0.05, 0.22)
@@ -12,7 +14,7 @@ const RANGE_Y := 200.0
 const WINDUP := 0.55          # telegraph time before each shot
 const COOLDOWN := 1.6         # pause between volleys
 
-var hp := 2
+var hp := 2 + D.ENEMY_HP_BONUS
 var dead := false
 var dir := -1
 var t := 0.0
@@ -39,6 +41,7 @@ func get_top_y() -> float:
 
 
 func _physics_process(delta: float) -> void:
+	delta *= D.ENEMY_TEMPO
 	t += delta
 	flash = max(flash - delta, 0.0)
 	if dead:

@@ -1,6 +1,8 @@
 extends CharacterBody2D
 ## The hero: a young librarian who throws blobs of ink and stomps on thieves.
 
+const D := preload("res://scripts/difficulty.gd")
+
 const SPEED := 270.0
 const ACCEL := 2000.0
 const AIR_ACCEL := 1400.0
@@ -14,15 +16,14 @@ const COYOTE_TIME := 0.1
 const JUMP_BUFFER := 0.12
 const SHOOT_COOLDOWN := 0.28
 const BIG_SCALE := 1.5
-const INVULN_TIME := 1.2
 const INVINCIBLE_TIME := 8.0
 const ProjectileScript := preload("res://scripts/projectile.gd")
 
 var big := false
-var max_ink := 10
-var ink := 10
-var max_hp := 5
-var hp := 5
+var max_ink := D.MAX_INK
+var ink := D.MAX_INK
+var max_hp := D.PLAYER_MAX_HP
+var hp := D.PLAYER_MAX_HP
 var alive := true
 var facing := 1
 var coyote := 0.0
@@ -33,6 +34,7 @@ var invincible_t := 0.0
 var sparkle_t := 0.0
 var knock_t := 0.0
 var stomp_grace := 0.0
+var spring_t := 0.0   # launched by a jump pad: full height even without holding jump
 var throw_anim := 0.0
 var anim := 0.0
 var squash := Vector2.ONE
@@ -89,6 +91,7 @@ func _physics_process(delta: float) -> void:
 	shoot_cd = max(shoot_cd - delta, 0.0)
 	knock_t = max(knock_t - delta, 0.0)
 	stomp_grace = max(stomp_grace - delta, 0.0)
+	spring_t = max(spring_t - delta, 0.0)
 	throw_anim = max(throw_anim - delta, 0.0)
 
 	if invincible_t > 0.0:
@@ -107,7 +110,7 @@ func _physics_process(delta: float) -> void:
 	var g := GRAVITY
 	if velocity.y > 0.0:
 		g *= FALL_MULT
-	elif not Input.is_action_pressed("jump"):
+	elif not Input.is_action_pressed("jump") and spring_t <= 0.0:
 		g *= SHORT_HOP_MULT
 	velocity.y = min(velocity.y + g * delta, MAX_FALL)
 
@@ -187,6 +190,14 @@ func _shoot() -> void:
 	get_parent().add_child(p)
 
 
+## Launched upward by a jump pad.
+func spring(launch_velocity: float) -> void:
+	velocity.y = launch_velocity
+	spring_t = 0.6
+	coyote = 0.0
+	squash = Vector2(0.7, 1.35)
+
+
 func grow() -> void:
 	if big:
 		return
@@ -219,7 +230,7 @@ func take_damage(amount: int, from_pos = null, force := false) -> void:
 	if big and not force:
 		# the power-up absorbs the hit instead of a heart
 		shrink()
-		invuln = INVULN_TIME
+		invuln = D.INVULN_TIME
 		if from_pos != null:
 			var sd: float = sign(global_position.x - from_pos.x)
 			if sd == 0.0:
@@ -230,7 +241,7 @@ func take_damage(amount: int, from_pos = null, force := false) -> void:
 		_main().burst(global_position, Color(0.8, 0.5, 1.0), 14, 160)
 		return
 	hp -= amount
-	invuln = INVULN_TIME
+	invuln = D.INVULN_TIME
 	if from_pos != null:
 		var d: float = sign(global_position.x - from_pos.x)
 		if d == 0.0:
