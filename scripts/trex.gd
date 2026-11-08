@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## Level 4 boss: the Evil Book Stealer riding a T-Rex he tamed in the past.
+## Level 6 boss: the Evil Book Stealer riding a T-Rex he tamed in the past.
 ## The T-Rex charges (and gets dizzy when it smacks the wall), roars to shake meteors loose,
 ## and stomps across the arena; the thief hurls stone tablets from the saddle.
 ## Stomp its head (2 damage) or hit it with ink (1 damage). Both count double while it's dizzy.
@@ -36,8 +36,9 @@ func _ready() -> void:
 	z_index = 4
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(70, 60)
+	r.size = Vector2(100, 81)
 	cs.shape = r
+	cs.position = Vector2(0, -9.5)
 	add_child(cs)
 
 
@@ -46,7 +47,7 @@ func _main():
 
 
 func get_top_y() -> float:
-	return global_position.y - 30.0
+	return global_position.y - 50.0
 
 
 func activate(p) -> void:

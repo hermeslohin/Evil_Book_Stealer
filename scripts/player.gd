@@ -18,12 +18,13 @@ const SHOOT_COOLDOWN := 0.28
 const BIG_SCALE := 1.5
 const INVINCIBLE_TIME := 8.0
 const ProjectileScript := preload("res://scripts/projectile.gd")
+const Progress := preload("res://scripts/progress.gd")
 
 var big := false
-var max_ink := D.MAX_INK
-var ink := D.MAX_INK
-var max_hp := D.PLAYER_MAX_HP
-var hp := D.PLAYER_MAX_HP
+var max_ink := D.MAX_INK + Progress.bonus_ink()
+var ink := max_ink
+var max_hp := D.PLAYER_MAX_HP + Progress.bonus_hp()
+var hp := max_hp
 var alive := true
 var facing := 1
 var coyote := 0.0
@@ -315,7 +316,8 @@ func _draw() -> void:
 	draw_circle(Vector2(3.5, -10), 1.0, Color(0.1, 0.1, 0.1))
 	draw_circle(Vector2(-2.5, -10), 1.0, Color(0.1, 0.1, 0.1))
 	# scarf
-	draw_rect(Rect2(-8, -4, 16, 3), Color(0.85, 0.2, 0.25))
+	var scarf := Progress.scarf_color(anim)
+	draw_rect(Rect2(-8, -4, 16, 3), scarf)
 	var flap := sin(anim * 10.0) * 2.0
-	draw_rect(Rect2(-12, -3 + flap * 0.3, 5, 3), Color(0.85, 0.2, 0.25))
+	draw_rect(Rect2(-12, -3 + flap * 0.3, 5, 3), scarf)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

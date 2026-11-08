@@ -1,5 +1,7 @@
 extends Node2D
 ## Level 2: the skateboard chase. Builds the city from ChaseData.MAP and runs the chase.
+## No boss fight here: the thief escapes over the wall at the end of the alley, and reaching
+## the end of the alley finishes the level. You fight him in Level 3, the Hideout.
 
 const TILE := 32
 const ChaseData := preload("res://scripts/chase_data.gd")
@@ -11,6 +13,7 @@ const SpikesScript := preload("res://scripts/spikes.gd")
 const CheckpointScript := preload("res://scripts/checkpoint.gd")
 const ChaseArtScript := preload("res://scripts/chase_art.gd")
 const HudScript := preload("res://scripts/hud.gd")
+const Progress := preload("res://scripts/progress.gd")
 const MainScript := preload("res://scripts/main.gd")
 
 # Survive scene reloads so "retry" resumes from the last checkpoint.
@@ -52,7 +55,6 @@ func _ready() -> void:
 	hud.set_hearts(player.hp, player.max_hp)
 	hud.set_books(books_collected, books_total)
 	hud.set_ink(player.ink, player.max_ink)
-	hud.show_boss_bar(thief.hp, thief.max_hp)
 
 	world.process_mode = Node.PROCESS_MODE_DISABLED
 	if resume_checkpoint != null:
@@ -64,17 +66,23 @@ func _ready() -> void:
 			"You roll forward on your own.  Right: go faster     Left: slow down\n" +
 			"Jump: Space / W / Z  -  hop cones and gaps, grind rails, hit the ramps!\n" +
 			"Throw ink (J / X) or jump on his head to knock books out of his sack.\n" +
+			"Grab as many as you can before he gets away!\n" +
 			"Don't ride into walls!\n\n" +
 			"Press Space to start the chase")
 
 
 func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("to_map"):
+		_clear_resume()
+		Progress.go_to_map(get_tree())
+		return
 	match state:
 		"intro":
 			if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 				state = "play"
 				hud.hide_message()
 				world.process_mode = Node.PROCESS_MODE_INHERIT
+				_apply_packed_items()
 				thief.activate(player)
 				if resume_checkpoint == null:
 					hud.banner("CATCH HIM!", Color(1.0, 0.6, 0.3))
@@ -82,7 +90,7 @@ func _process(_delta: float) -> void:
 			if hud.message_visible() and (Input.is_action_just_pressed("restart") or Input.is_action_just_pressed("ui_accept")):
 				if state == "won":
 					_clear_resume()
-					get_tree().change_scene_to_file("res://hack.tscn")   # on to Level 3!
+					Progress.go_to_map(get_tree())
 				else:
 					get_tree().reload_current_scene()
 		_:
@@ -92,8 +100,18 @@ func _process(_delta: float) -> void:
 				return
 			if state == "play" and player.global_position.x > arena_x:
 				_enter_alley()
+			if state == "alley" and player.global_position.x > stand_x - 3 * TILE:
+				_finish_level()
 			if player.alive and player.global_position.y > rows * TILE + 48:
 				_player_fell()
+
+
+func _apply_packed_items() -> void:
+	if resume_checkpoint != null:
+		return
+	var packed := Progress.apply_run_items(player)
+	if packed != "":
+		get_tree().create_timer(1.6).timeout.connect(func(): hud.banner(packed + "!", Color(1.0, 0.85, 0.3)))
 
 
 static func _clear_resume() -> void:
@@ -252,7 +270,7 @@ func _build_world() -> void:
 	player.camera.reset_smoothing()
 
 	thief = RunnerScript.new()
-	books_total += thief.max_hp   # each hit knocks a book out of his sack
+	books_total += thief.max_hp - RunnerScript.RUN_MIN_HP   # each hit knocks a book out of his sack
 	bonus_books = resume_bonus_books
 	books_collected += bonus_books
 	if resume_thief_hp > 0:
@@ -273,10 +291,8 @@ func _enter_alley(silent := false) -> void:
 	state = "alley"
 	player.auto = false
 	player.camera.limit_left = int(arena_x) - 4 * TILE
-	thief.corner()
 	if not silent:
-		shake(6)
-		hud.banner("DEAD END! He's trapped!", Color(1.0, 0.5, 0.6))
+		hud.banner("DEAD END! Don't let him get away!", Color(1.0, 0.5, 0.6))
 
 
 func _player_fell() -> void:
@@ -284,7 +300,7 @@ func _player_fell() -> void:
 	if player.alive:
 		player.respawn(checkpoint_pos - Vector2(0, 16))
 		# the thief waits a little way ahead so the chase can continue
-		if not thief.cornered and not thief.dead:
+		if not thief.cornered and not thief.dead and not thief.escaped:
 			var col := int(checkpoint_pos.x / TILE) + 11
 			thief.global_position = Vector2((col + 0.5) * TILE, ground_top(col) - 28.0)
 			thief.velocity = Vector2.ZERO
@@ -308,7 +324,7 @@ func on_player_died() -> void:
 	resume_bonus_books = bonus_books
 	resume_thief_hp = thief.hp
 	await get_tree().create_timer(1.6).timeout
-	hud.show_message("WIPEOUT!", "The Book Stealer gets away... for now!\n\nPress R or Enter to retry from your last checkpoint")
+	hud.show_message("WIPEOUT!", "The Book Stealer gets away... for now!\n\nPress R or Enter to retry from your last checkpoint\nPress Esc to go back to the world map")
 
 
 func drop_book(pos: Vector2) -> void:
@@ -352,8 +368,7 @@ func set_checkpoint(pos: Vector2) -> void:
 	burst(pos - Vector2(0, 40), Color(0.5, 1.0, 0.6), 16, 140)
 
 
-func on_thief_hurt(hp: int, max_hp: int) -> void:
-	hud.set_boss_hp(hp, max_hp)
+func on_thief_hurt(_hp: int, _max_hp: int) -> void:
 	shake(3)
 
 
@@ -363,11 +378,34 @@ func on_thief_too_fast() -> void:
 	var now := Time.get_ticks_msec() / 1000.0
 	if now > too_fast_cd:
 		too_fast_cd = now + 4.0
-		hud.banner("He's too slippery! Chase him into a corner!", Color(1.0, 0.7, 0.4))
+		hud.banner("He's clutching the last books too tight!", Color(1.0, 0.7, 0.4))
+
+
+func on_thief_escaped(pos: Vector2) -> void:
+	burst(pos, Color(0.6, 0.4, 0.8), 18, 220)
+	if state != "won":
+		hud.banner("He leapt over the wall!", Color(0.85, 0.6, 1.0))
+
+
+## Reached the end of the alley: the chase is over and the thief has fled to his hideout.
+func _finish_level() -> void:
+	state = "won"
+	thief.escape()
+	var reward := Progress.complete_level(2, books_collected, books_total)
+	player.invuln = 999.0
+	player.auto = false
+	_clear_resume()
+	await get_tree().create_timer(1.8).timeout
+	hud.show_message("LEVEL 2 COMPLETE!",
+		"The Evil Book Stealer leapt over the wall and got away...\n" +
+		"but you spotted where he went: his secret HIDEOUT in Book Town!\n\n" +
+		"Books recovered in the chase: %d / %d\n\n" % [books_collected, books_total] +
+		reward + "\n\nPress Enter to return to the world map")
 
 
 func on_thief_defeated(pos: Vector2) -> void:
 	state = "won"
+	var reward := Progress.complete_level(2, books_collected, books_total)
 	player.invuln = 999.0
 	hud.hide_boss_bar()
 	shake(16)
@@ -382,7 +420,7 @@ func on_thief_defeated(pos: Vector2) -> void:
 		"But wait... where are all the E-BOOKS he stole?\n" +
 		"\"Ha! They're locked inside my SUPERCOMPUTER!\" he cackles.\n\n" +
 		"Books recovered in the chase: %d / %d\n\n" % [books_collected, books_total] +
-		"Press Enter to hack into his supercomputer!")
+		reward + "\n\nPress Enter to return to the world map")
 
 
 # ---------------------------------------------------------------- effects

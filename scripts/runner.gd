@@ -1,7 +1,8 @@
 extends CharacterBody2D
 ## The Evil Book Stealer on the run. He sprints ahead of you through the city, leaping over
 ## everything and tossing books back at you. Ink him (1 damage) or jump on his head (2 damage)
-## to knock books out of his sack. At the dead-end alley he turns and makes a last stand.
+## to knock books out of his sack. At the end of the dead-end alley he leaps over the wall
+## and escapes to his hideout (the boss fight is in Level 3).
 
 const D := preload("res://scripts/difficulty.gd")
 
@@ -15,6 +16,7 @@ var hp := max_hp
 var active := false
 var dead := false
 var cornered := false
+var escaped := false
 var state := "run"     # run, windup, throw, (cornered:) idle, hop
 var state_t := 0.0
 var facing := 1
@@ -34,8 +36,9 @@ func _ready() -> void:
 	z_index = 4
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(34, 56)
+	r.size = Vector2(66, 83)
 	cs.shape = r
+	cs.position = Vector2(0, -13.5)
 	add_child(cs)
 
 
@@ -48,7 +51,7 @@ func is_thief() -> bool:
 
 
 func get_top_y() -> float:
-	return global_position.y - 28.0
+	return global_position.y - 55.0
 
 
 func activate(p) -> void:
@@ -64,6 +67,20 @@ func corner() -> void:
 	state_t = 1.0
 
 
+## Leap over the wall at the end of the alley and get away.
+func escape() -> void:
+	if escaped or dead:
+		return
+	escaped = true
+	collision_layer = 0
+	collision_mask = 0
+	facing = 1
+	state = "run"
+	velocity = Vector2(260.0, -1150.0)
+	z_index = 40
+	_main().on_thief_escaped(global_position)
+
+
 func _physics_process(delta: float) -> void:
 	delta *= D.BOSS_TEMPO
 	t += delta
@@ -71,6 +88,16 @@ func _physics_process(delta: float) -> void:
 	stomp_cd = max(stomp_cd - delta, 0.0)
 	stumble = max(stumble - delta, 0.0)
 	modulate = Color(3, 3, 3) if flash > 0.0 else Color.WHITE
+
+	if escaped:
+		# a huge leap up and over the alley wall, then he's gone
+		velocity.y += GRAVITY * 0.6 * delta
+		position += velocity * delta
+		if position.y > 3000:
+			hide()   # keep the node around: the level still checks on him
+			set_physics_process(false)
+		queue_redraw()
+		return
 
 	if dead:
 		velocity.y += GRAVITY * delta
@@ -106,7 +133,7 @@ func _physics_process(delta: float) -> void:
 func _flee(delta: float) -> void:
 	var m = _main()
 	if global_position.x >= m.stand_x:
-		corner()
+		escape()
 		return
 	facing = 1
 	# He jogs at a steady pace. Hold Right to catch up! Get too close and he sprints;
@@ -217,13 +244,13 @@ func _throw_book() -> void:
 
 
 func hit(dmg: int) -> void:
-	if dead or not active:
+	if dead or escaped or not active:
 		return
 	_hurt(dmg, 0.45)
 
 
 func stomped(_by) -> void:
-	if stomp_cd > 0.0 or not active or dead:
+	if stomp_cd > 0.0 or not active or dead or escaped:
 		return
 	stomp_cd = 0.4
 	_hurt(2, 0.9)

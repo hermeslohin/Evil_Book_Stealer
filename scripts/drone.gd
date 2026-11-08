@@ -30,8 +30,9 @@ func _ready() -> void:
 	home = position
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(30, 20)
+	r.size = Vector2(34, 22)
 	cs.shape = r
+	cs.position = Vector2(0, 0.5)
 	add_child(cs)
 
 

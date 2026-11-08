@@ -1,4 +1,4 @@
-# Level 4 layout: lost in time, way back in the age of dinosaurs. Each character is one 32x32 tile.
+# Level 6 layout: lost in time, way back in the age of dinosaurs. Each character is one 32x32 tile.
 #   #  rock                   =  log platform (one-way)    P  player start
 #   B  stone tablet           H  heart    N  ink bottle    M  growth mushroom   X  star
 #   R  raptor (charges you)   F  pterodactyl (swoops down) ^  stalagmites

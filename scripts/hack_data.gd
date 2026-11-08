@@ -1,4 +1,4 @@
-# Level 3 layout: inside the Book Stealer's supercomputer. Each character is one 32x32 tile.
+# Level 4 layout: inside the Book Stealer's supercomputer. Each character is one 32x32 tile.
 #   #  circuit block          =  data bridge (one-way)     P  player start
 #   B  stolen e-book          H  heart    N  ink bottle    M  growth mushroom   X  star
 #   W  computer worm          D  security drone            L  laser emitter (fires down)

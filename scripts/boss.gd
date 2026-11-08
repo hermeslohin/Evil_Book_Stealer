@@ -30,8 +30,9 @@ func _ready() -> void:
 	z_index = 4
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(44, 60)
+	r.size = Vector2(70, 62)
 	cs.shape = r
+	cs.position = Vector2(0, -1)
 	add_child(cs)
 
 
@@ -40,7 +41,7 @@ func _main():
 
 
 func get_top_y() -> float:
-	return global_position.y - 30.0
+	return global_position.y - 32.0
 
 
 func activate(p) -> void:

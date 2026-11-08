@@ -248,8 +248,8 @@ func _draw() -> void:
 	draw_circle(Vector2(3.5, -16), 1.0, Color(0.1, 0.1, 0.1))
 	draw_circle(Vector2(-2.5, -16), 1.0, Color(0.1, 0.1, 0.1))
 	# scarf streaming behind in the wind
-	draw_rect(Rect2(-8, -10, 16, 3), Color(0.85, 0.2, 0.25))
+	draw_rect(Rect2(-8, -10, 16, 3), Progress.scarf_color(anim))
 	var flap := sin(anim * 14.0) * 2.5
-	draw_rect(Rect2(-16, -10 + flap * 0.4, 8, 3), Color(0.85, 0.2, 0.25))
-	draw_rect(Rect2(-22, -9 + flap, 6, 3), Color(0.85, 0.2, 0.25))
+	draw_rect(Rect2(-16, -10 + flap * 0.4, 8, 3), Progress.scarf_color(anim))
+	draw_rect(Rect2(-22, -9 + flap, 6, 3), Progress.scarf_color(anim))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

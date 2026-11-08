@@ -1,5 +1,7 @@
 extends Node2D
-## Builds the level from LevelData.MAP, spawns everything, and runs the game flow.
+## Level 1: builds the level from LevelData.MAP, spawns everything, and runs the game flow.
+## Level 1 has no boss: reaching the end of the library finishes it. The Hideout (Level 3)
+## extends this script with its own map and turns the boss fight on.
 
 const TILE := 32
 const LevelData := preload("res://scripts/level_data.gd")
@@ -13,6 +15,7 @@ const SpikesScript := preload("res://scripts/spikes.gd")
 const CheckpointScript := preload("res://scripts/checkpoint.gd")
 const LevelArtScript := preload("res://scripts/level_art.gd")
 const HudScript := preload("res://scripts/hud.gd")
+const Progress := preload("res://scripts/progress.gd")
 const D := preload("res://scripts/difficulty.gd")
 
 # Survive scene reloads so "retry" resumes from the last checkpoint.
@@ -37,6 +40,8 @@ var books_collected := 0
 var collected := {}
 var well_ink := {}
 var state := "intro"   # intro, play, boss, won, lost
+var level_num := 1     # which level this is, for saving progress
+var has_boss := false  # true: the arena past the gate is a boss fight. false: the gate is the finish line
 
 
 func _ready() -> void:
@@ -60,72 +65,59 @@ func _ready() -> void:
 
 
 func _show_title() -> void:
-	var picks := []
-	for m in D.MODES:
-		picks.append(("[ %s ]" if m == D.mode else "  %s  ") % m.to_upper())
-	var blurb: String = {
-		"easy": "%d hearts, slower enemies, weaker bosses. Great for learning!",
-		"normal": "%d hearts. A real challenge.",
-		"hard": "%d hearts, fast tough enemies, huge bosses. Good luck!",
-	}[D.mode] % D.PLAYER_MAX_HP
-	hud.show_message("THE EVIL BOOK STEALER",
+	hud.show_message("LEVEL 1: THE GRAND LIBRARY",
 		"A hooded thief has stolen every book from the Grand Library!\n" +
-		"Recover the books, then chase him down and defeat him.\n\n" +
+		"Recover the books and chase him to the end of the library!\n\n" +
 		"Move: Arrows / WASD     Jump: Space / W / Z     Throw ink: J / X\n" +
 		"Stomp enemies by jumping on them!\n\n" +
-		"Difficulty  (Left / Right):   %s\n%s\n\n" % ["   ".join(picks), blurb] +
-		"Press Space to begin     (or press 2 - 5 to skip to that level)")
+		"Press Space to begin     (Esc: back to the map)")
 
 
 func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("to_map"):
+		_clear_resume()
+		Progress.go_to_map(get_tree())
+		return
 	match state:
 		"intro":
-			if resume_checkpoint == null:
-				var step := 0
-				if Input.is_action_just_pressed("move_left"):
-					step = -1
-				elif Input.is_action_just_pressed("move_right"):
-					step = 1
-				if step != 0 and D.MODES.find(D.mode) + step in range(D.MODES.size()):
-					D.cycle(step)
-					get_tree().reload_current_scene()   # rebuild the level with the new settings
-					return
-			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_2):
-				get_tree().change_scene_to_file("res://chase.tscn")   # skip straight to Level 2
-				return
-			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_3):
-				get_tree().change_scene_to_file("res://hack.tscn")    # skip straight to Level 3
-				return
-			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_4):
-				get_tree().change_scene_to_file("res://time.tscn")    # skip straight to Level 4
-				return
-			if resume_checkpoint == null and Input.is_physical_key_pressed(KEY_5):
-				get_tree().change_scene_to_file("res://future.tscn")  # skip straight to Level 5
-				return
 			if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 				state = "play"
 				hud.hide_message()
 				world.process_mode = Node.PROCESS_MODE_INHERIT
+				_apply_packed_items()
 		"won", "lost":
 			if hud.message_visible() and (Input.is_action_just_pressed("restart") or Input.is_action_just_pressed("ui_accept")):
 				if state == "won":
-					resume_checkpoint = null
-					resume_collected = {}
-					resume_wells = {}
-					get_tree().change_scene_to_file("res://chase.tscn")   # on to Level 2!
+					_clear_resume()
+					Progress.go_to_map(get_tree())
 					return
 				get_tree().reload_current_scene()
 		_:
 			if Input.is_action_just_pressed("restart"):
-				resume_checkpoint = null
-				resume_collected = {}
-				resume_wells = {}
+				_clear_resume()
 				get_tree().reload_current_scene()
 				return
 			if state == "play" and player.global_position.x > arena_trigger_x:
-				_start_boss_fight()
+				if has_boss:
+					_start_boss_fight()
+				else:
+					_finish_level()
 			if player.alive and player.global_position.y > rows * TILE + 48:
 				_player_fell()
+
+
+func _apply_packed_items() -> void:
+	if resume_checkpoint != null:
+		return
+	var packed := Progress.apply_run_items(player)
+	if packed != "":
+		get_tree().create_timer(1.6).timeout.connect(func(): hud.banner(packed + "!", Color(1.0, 0.85, 0.3)))
+
+
+static func _clear_resume() -> void:
+	resume_checkpoint = null
+	resume_collected = {}
+	resume_wells = {}
 
 
 # ---------------------------------------------------------------- input
@@ -136,6 +128,7 @@ func _setup_input() -> void:
 	_add_action("jump", [KEY_SPACE, KEY_W, KEY_UP, KEY_Z], [JOY_BUTTON_A])
 	_add_action("shoot", [KEY_J, KEY_X, KEY_K], [JOY_BUTTON_X, JOY_BUTTON_B])
 	_add_action("restart", [KEY_R], [JOY_BUTTON_START])
+	_add_action("to_map", [KEY_ESCAPE, KEY_M], [JOY_BUTTON_BACK])
 
 
 func _add_action(action: String, keys: Array, buttons: Array, axis_dir := 0.0) -> void:
@@ -159,8 +152,12 @@ func _add_action(action: String, keys: Array, buttons: Array, axis_dir := 0.0) -
 
 # ---------------------------------------------------------------- level building
 
+func _map_data() -> Array:
+	return LevelData.MAP
+
+
 func _parse_map() -> void:
-	var data: Array = LevelData.MAP
+	var data: Array = _map_data()
 	rows = data.size()
 	for line in data:
 		cols = max(cols, line.length())
@@ -292,9 +289,10 @@ func _build_world() -> void:
 	player.camera.limit_bottom = rows * TILE
 	player.camera.reset_smoothing()
 
-	boss = BossScript.new()
-	boss.position = boss_start - Vector2(0, 32)
-	world.add_child(boss)
+	if has_boss:
+		boss = BossScript.new()
+		boss.position = boss_start - Vector2(0, 32)
+		world.add_child(boss)
 
 
 # ---------------------------------------------------------------- game events
@@ -309,6 +307,24 @@ func _start_boss_fight() -> void:
 	hud.banner("THE EVIL BOOK STEALER!", Color(0.85, 0.5, 1.0))
 	hud.show_boss_bar(boss.hp, boss.max_hp)
 	boss.activate(player)
+
+
+## No boss here: reaching the end of the level wins it.
+func _finish_level() -> void:
+	state = "won"
+	var reward := Progress.complete_level(level_num, books_collected, books_total)
+	player.invuln = 999.0
+	for i in 4:
+		burst(player.global_position + Vector2(randf_range(-40, 40), randf_range(-60, -10)),
+			Color.from_hsv(randf(), 0.7, 1.0), 14, 220)
+	hud.banner("He jumped out the window!", Color(1.0, 0.85, 0.3))
+	_clear_resume()
+	await get_tree().create_timer(2.0).timeout
+	hud.show_message("LEVEL 1 COMPLETE!",
+		"You chased the Evil Book Stealer to the end of the library,\n" +
+		"but he leapt out the window with one last sack of books!\n\n" +
+		"Books you rescued along the way: %d / %d\n\n" % [books_collected, books_total] +
+		reward + "\n\nPress Enter to return to the world map")
 
 
 func _player_fell() -> void:
@@ -334,7 +350,7 @@ func on_player_died() -> void:
 	resume_collected = collected.duplicate()
 	resume_wells = well_ink.duplicate()
 	await get_tree().create_timer(1.6).timeout
-	hud.show_message("OH NO!", "The Book Stealer cackles and runs off with the books...\n\nPress R or Enter to retry from your last checkpoint")
+	hud.show_message("OH NO!", "The Book Stealer cackles and runs off with the books...\n\nPress R or Enter to retry from your last checkpoint\nPress Esc to go back to the world map")
 
 
 func collect_pickup(pickup) -> void:
@@ -376,6 +392,7 @@ func on_boss_hurt(hp: int, max_hp: int) -> void:
 
 func on_boss_defeated(pos: Vector2) -> void:
 	state = "won"
+	var reward := Progress.complete_level(level_num, books_collected, books_total)
 	player.invuln = 999.0
 	hud.hide_boss_bar()
 	shake(16)
@@ -390,11 +407,15 @@ func on_boss_defeated(pos: Vector2) -> void:
 	resume_collected = {}
 	resume_wells = {}
 	await get_tree().create_timer(2.5).timeout
-	hud.show_message("LEVEL 1 COMPLETE!",
-		"You knocked the Evil Book Stealer out the library window!\n" +
-		"But he landed on his feet and ran off with one last sack of books...\n\n" +
+	_show_boss_win(reward)
+
+
+## Overridden by the Hideout (Level 3), the level that has the boss fight.
+func _show_boss_win(reward: String) -> void:
+	hud.show_message("LEVEL %d COMPLETE!" % level_num,
+		"You defeated the Evil Book Stealer!\n\n" +
 		"Books you rescued along the way: %d / %d\n\n" % [books_collected, books_total] +
-		"Press Enter to grab your skateboard and chase him!")
+		reward + "\n\nPress Enter to return to the world map")
 
 
 # ---------------------------------------------------------------- effects

@@ -1,5 +1,5 @@
 extends CharacterBody2D
-## Level 5 boss: the Cyborg Book Stealer, who rebuilt himself out of robot parts and took over the world.
+## Level 7 boss: the Cyborg Book Stealer, who rebuilt himself out of robot parts and took over the world.
 ## He sweeps a laser beam along the floor (jump it!) and then OVERHEATS, fires rocket fists,
 ## launches homing missiles, and once he's damaged, rockets up and slams down from the sky.
 ## Stomp his head (2 damage) or hit him with ink (1 damage). Both count double while he's overheated.
@@ -37,8 +37,9 @@ func _ready() -> void:
 	z_index = 4
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(56, 80)
+	r.size = Vector2(68, 94)
 	cs.shape = r
+	cs.position = Vector2(0, -7)
 	add_child(cs)
 
 
@@ -47,7 +48,7 @@ func _main():
 
 
 func get_top_y() -> float:
-	return global_position.y - 40.0
+	return global_position.y - 54.0
 
 
 func activate(p) -> void:

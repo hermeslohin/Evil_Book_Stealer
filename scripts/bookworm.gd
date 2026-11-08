@@ -21,8 +21,9 @@ func _ready() -> void:
 	t = randf() * 10.0
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(28, 18)
+	r.size = Vector2(40, 18)
 	cs.shape = r
+	cs.position = Vector2(0, 0)
 	add_child(cs)
 	ray = RayCast2D.new()
 	ray.target_position = Vector2(0, 22)

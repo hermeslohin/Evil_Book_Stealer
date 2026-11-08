@@ -1,5 +1,5 @@
 extends Node2D
-## Level 4: lost in time. The supercomputer's crash flung you back to the age of dinosaurs,
+## Level 6: lost in time. The supercomputer's crash flung you back to the age of dinosaurs,
 ## where the Book Stealer is trying to steal the very first stories ever carved in stone.
 ## Builds the prehistoric world from TimeData.MAP and runs the game flow.
 
@@ -17,6 +17,7 @@ const ProjectileScript := preload("res://scripts/projectile.gd")
 const TrexScript := preload("res://scripts/trex.gd")
 const TimeArtScript := preload("res://scripts/time_art.gd")
 const HudScript := preload("res://scripts/hud.gd")
+const Progress := preload("res://scripts/progress.gd")
 const MainScript := preload("res://scripts/main.gd")
 
 const METEOR_EVERY := 1.1
@@ -68,7 +69,7 @@ func _ready() -> void:
 	if resume_checkpoint != null:
 		hud.show_message("TRY AGAIN!", "Back at your last checkpoint.\n\nPress Space to continue")
 	else:
-		hud.show_message("LEVEL 4: LOST IN TIME",
+		hud.show_message("LEVEL 6: LOST IN TIME",
 			"WHOOSH! The time portal flung you way, WAY back... to the age of dinosaurs!\n" +
 			"The Book Stealer came too. He's stealing the very first stories ever carved in stone,\n" +
 			"so that nobody in the future will ever write a book!\n\n" +
@@ -78,19 +79,24 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if Input.is_action_just_pressed("to_map"):
+		_clear_resume()
+		Progress.go_to_map(get_tree())
+		return
 	match state:
 		"intro":
 			if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 				state = "play"
 				hud.hide_message()
 				world.process_mode = Node.PROCESS_MODE_INHERIT
+				_apply_packed_items()
 				if resume_checkpoint == null:
 					hud.banner("WHERE... WHEN AM I?", Color(1.0, 0.75, 0.4))
 		"won", "lost":
 			if hud.message_visible() and (Input.is_action_just_pressed("restart") or Input.is_action_just_pressed("ui_accept")):
 				if state == "won":
 					_clear_resume()
-					get_tree().change_scene_to_file("res://future.tscn")   # on to Level 5!
+					Progress.go_to_map(get_tree())
 				else:
 					get_tree().reload_current_scene()
 		_:
@@ -107,6 +113,14 @@ func _process(delta: float) -> void:
 				_player_fell()
 			if state == "play" and player.alive:
 				_update_meteors(delta)
+
+
+func _apply_packed_items() -> void:
+	if resume_checkpoint != null:
+		return
+	var packed := Progress.apply_run_items(player)
+	if packed != "":
+		get_tree().create_timer(1.6).timeout.connect(func(): hud.banner(packed + "!", Color(1.0, 0.85, 0.3)))
 
 
 static func _clear_resume() -> void:
@@ -356,7 +370,7 @@ func on_player_died() -> void:
 	resume_collected = collected.duplicate()
 	resume_wells = well_ink.duplicate()
 	await get_tree().create_timer(1.6).timeout
-	hud.show_message("EXTINCT!", "Looks like you went the way of the dinosaurs...\n\nPress R or Enter to retry from your last checkpoint")
+	hud.show_message("EXTINCT!", "Looks like you went the way of the dinosaurs...\n\nPress R or Enter to retry from your last checkpoint\nPress Esc to go back to the world map")
 
 
 func collect_pickup(pickup) -> void:
@@ -398,6 +412,7 @@ func on_boss_hurt(hp: int, max_hp: int) -> void:
 
 func on_boss_defeated(pos: Vector2) -> void:
 	state = "won"
+	var reward := Progress.complete_level(6, books_collected, books_total)
 	player.invuln = 999.0
 	hud.hide_boss_bar()
 	shake(18)
@@ -415,7 +430,7 @@ func on_boss_defeated(pos: Vector2) -> void:
 		"The first stories ever told are safe... but the thief scrambles into the time portal,\n" +
 		"cranks the dial all the way FORWARD and vanishes into the future!\n\n" +
 		"Stone tablets recovered: %d / %d\n\n" % [books_collected, books_total] +
-		"Press Enter to dive into the portal after him!")
+		reward + "\n\nPress Enter to return to the world map")
 
 
 # ---------------------------------------------------------------- effects

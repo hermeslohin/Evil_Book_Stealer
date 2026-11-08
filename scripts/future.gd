@@ -1,5 +1,5 @@
 extends Node2D
-## Level 5: the year 3000. The Book Stealer escaped into the future ahead of you, rebuilt himself
+## Level 7: the year 3000. The Book Stealer escaped into the future ahead of you, rebuilt himself
 ## as a cyborg and took over the world, banning books forever. Free the books and bring him down!
 ## Builds the future city from FutureData.MAP and runs the game flow.
 
@@ -18,6 +18,7 @@ const HoverScript := preload("res://scripts/hover_platform.gd")
 const CyborgScript := preload("res://scripts/cyborg.gd")
 const FutureArtScript := preload("res://scripts/future_art.gd")
 const HudScript := preload("res://scripts/hud.gd")
+const Progress := preload("res://scripts/progress.gd")
 const MainScript := preload("res://scripts/main.gd")
 
 # Survive scene reloads so "retry" resumes from the last checkpoint.
@@ -64,7 +65,7 @@ func _ready() -> void:
 	if resume_checkpoint != null:
 		hud.show_message("REBOOTING HERO...", "Back at your last checkpoint.\n\nPress Space to continue")
 	else:
-		hud.show_message("LEVEL 5: THE YEAR 3000",
+		hud.show_message("LEVEL 7: THE YEAR 3000",
 			"You dove into the portal after him... and it shot you into the FUTURE!\n" +
 			"The Book Stealer got here years before you. He rebuilt himself as a CYBORG,\n" +
 			"crowned himself King of the World, and BANNED BOOKS FOREVER!\n\n" +
@@ -74,19 +75,24 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("to_map"):
+		_clear_resume()
+		Progress.go_to_map(get_tree())
+		return
 	match state:
 		"intro":
 			if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 				state = "play"
 				hud.hide_message()
 				world.process_mode = Node.PROCESS_MODE_INHERIT
+				_apply_packed_items()
 				if resume_checkpoint == null:
 					hud.banner("WELCOME TO THE FUTURE!", Color(0.95, 0.4, 0.85))
 		"won", "lost":
 			if hud.message_visible() and (Input.is_action_just_pressed("restart") or Input.is_action_just_pressed("ui_accept")):
 				if state == "won":
 					_clear_resume()
-					get_tree().change_scene_to_file("res://main.tscn")
+					Progress.go_to_map(get_tree())
 				else:
 					get_tree().reload_current_scene()
 		_:
@@ -98,6 +104,14 @@ func _process(_delta: float) -> void:
 				_start_boss_fight()
 			if player.alive and player.global_position.y > rows * TILE + 48:
 				_player_fell()
+
+
+func _apply_packed_items() -> void:
+	if resume_checkpoint != null:
+		return
+	var packed := Progress.apply_run_items(player)
+	if packed != "":
+		get_tree().create_timer(1.6).timeout.connect(func(): hud.banner(packed + "!", Color(1.0, 0.85, 0.3)))
 
 
 static func _clear_resume() -> void:
@@ -322,7 +336,7 @@ func on_player_died() -> void:
 	resume_collected = collected.duplicate()
 	resume_wells = well_ink.duplicate()
 	await get_tree().create_timer(1.6).timeout
-	hud.show_message("DELETED!", "\"Resistance is futile!\" the Cyborg laughs...\n\nPress R or Enter to retry from your last checkpoint")
+	hud.show_message("DELETED!", "\"Resistance is futile!\" the Cyborg laughs...\n\nPress R or Enter to retry from your last checkpoint\nPress Esc to go back to the world map")
 
 
 func collect_pickup(pickup) -> void:
@@ -364,6 +378,7 @@ func on_boss_hurt(hp: int, max_hp: int) -> void:
 
 func on_boss_defeated(pos: Vector2) -> void:
 	state = "won"
+	var reward := Progress.complete_level(7, books_collected, books_total)
 	player.invuln = 999.0
 	hud.hide_boss_bar()
 	shake(20)
@@ -385,7 +400,7 @@ func on_boss_defeated(pos: Vector2) -> void:
 		"Every robot in the city powers down. The holograms flicker off. Books are LEGAL again!\n" +
 		"People pour into the streets and the Grand Library reopens. Everyone is reading!\n\n" +
 		"Banned books rescued: %d / %d\n\n" % [books_collected, books_total] +
-		"THE END!   Press R or Enter to play again from Level 1")
+		reward + "\n\nTHE END!   Press Enter to return to the world map")
 
 
 # ---------------------------------------------------------------- effects

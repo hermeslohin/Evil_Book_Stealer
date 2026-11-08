@@ -1,4 +1,4 @@
-# Level 5 layout: the year 3000, a city ruled by the Cyborg Book Stealer. Each character is one 32x32 tile.
+# Level 7 layout: the year 3000, a city ruled by the Cyborg Book Stealer. Each character is one 32x32 tile.
 #   #  steel                  =  neon grate (one-way)      P  player start
 #   B  banned book            H  heart    N  ink bottle    M  growth mushroom   X  star
 #   Z  robot guard (shoots)   D  hover drone               L  laser emitter (fires down)

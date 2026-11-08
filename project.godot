@@ -3,9 +3,13 @@ config_version=5
 
 [application]
 config/name="The Evil Book Stealer"
-config/version="0.1"
-run/main_scene="res://main.tscn"
+config/version="0.2"
+run/main_scene="res://world_map.tscn"
 config/features=PackedStringArray("4.7")
+
+[autoload]
+
+Music="*res://scripts/music.gd"
 
 [display]
 window/size/viewport_width=960

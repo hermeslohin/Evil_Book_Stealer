@@ -1,6 +1,7 @@
 extends Node2D
-## Level 3: hack into the Evil Book Stealer's supercomputer and recover the stolen e-books.
+## Level 4: hack into the Evil Book Stealer's supercomputer and recover the stolen e-books.
 ## Builds the cyberspace level from HackData.MAP and runs the game flow.
+## Level 5 (System Crash, crash.gd) extends this script with its own map and no core fight.
 
 const TILE := 32
 const HackData := preload("res://scripts/hack_data.gd")
@@ -16,6 +17,7 @@ const DroneScript := preload("res://scripts/drone.gd")
 const CoreScript := preload("res://scripts/core.gd")
 const HackArtScript := preload("res://scripts/hack_art.gd")
 const HudScript := preload("res://scripts/hud.gd")
+const Progress := preload("res://scripts/progress.gd")
 const MainScript := preload("res://scripts/main.gd")
 
 # Survive scene reloads so "retry" resumes from the last checkpoint.
@@ -23,6 +25,7 @@ static var resume_checkpoint = null
 static var resume_collected := {}
 static var resume_wells := {}
 static var resume_opened := {}
+static var resume_level := 0   # which level the resume info belongs to (L4 and L5 share it)
 
 var grid: Array = []
 var cols := 0
@@ -46,6 +49,7 @@ var firewalls := {}       # group -> Array of firewall nodes
 var terminals := {}       # group -> terminal node
 var core_terminals := []
 var state := "intro"      # intro, play, boss, won, lost
+var level_num := 4        # which level this is, for saving progress
 
 
 func _ready() -> void:
@@ -54,6 +58,8 @@ func _ready() -> void:
 	var level1 = MainScript.new()   # borrow its control setup in case this scene is run directly
 	level1._setup_input()
 	level1.free()
+	if resume_level != level_num:
+		_clear_resume()
 	_parse_map()
 	_build_world()
 
@@ -68,7 +74,15 @@ func _ready() -> void:
 	if resume_checkpoint != null:
 		hud.show_message("REBOOTING...", "Back at your last checkpoint.\n\nPress Space to continue")
 	else:
-		hud.show_message("LEVEL 3: THE MAINFRAME",
+		_show_title()
+
+
+func _map_data() -> Array:
+	return HackData.MAP
+
+
+func _show_title() -> void:
+	hud.show_message("LEVEL 4: THE MAINFRAME",
 			"The Book Stealer's sack was empty... because he uploaded the rest as E-BOOKS!\n" +
 			"Jack into his evil supercomputer and download every e-book back to the library.\n\n" +
 			"Stand at a TERMINAL to hack it and shut down the red FIREWALL that matches.\n" +
@@ -78,19 +92,23 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if Input.is_action_just_pressed("to_map"):
+		_clear_resume()
+		Progress.go_to_map(get_tree())
+		return
 	match state:
 		"intro":
 			if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("ui_accept"):
 				state = "play"
 				hud.hide_message()
 				world.process_mode = Node.PROCESS_MODE_INHERIT
-				if resume_checkpoint == null:
-					hud.banner("ACCESS... GRANTED?", Color(0.4, 1.0, 0.7))
+				_apply_packed_items()
+				_on_start()
 		"won", "lost":
 			if hud.message_visible() and (Input.is_action_just_pressed("restart") or Input.is_action_just_pressed("ui_accept")):
 				if state == "won":
 					_clear_resume()
-					get_tree().change_scene_to_file("res://time.tscn")   # on to Level 4!
+					Progress.go_to_map(get_tree())
 				else:
 					get_tree().reload_current_scene()
 		_:
@@ -98,10 +116,34 @@ func _process(_delta: float) -> void:
 				_clear_resume()
 				get_tree().reload_current_scene()
 				return
+			_play_update(_delta)
 			if state == "play" and player.global_position.x > arena_trigger_x:
 				_start_core_fight()
 			if player.alive and player.global_position.y > rows * TILE + 48:
 				_player_fell()
+
+
+func _apply_packed_items() -> void:
+	if resume_checkpoint != null:
+		return
+	var packed := Progress.apply_run_items(player)
+	if packed != "":
+		get_tree().create_timer(1.6).timeout.connect(func(): hud.banner(packed + "!", Color(1.0, 0.85, 0.3)))
+
+
+func _on_start() -> void:
+	if resume_checkpoint == null:
+		hud.banner("ACCESS... GRANTED?", Color(0.4, 1.0, 0.7))
+
+
+## Called every frame while you're playing (Level 5 runs its crash wave here).
+func _play_update(_delta: float) -> void:
+	pass
+
+
+## Called for map characters this script doesn't know (Level 5 uses it for the exit portal).
+func _spawn_extra(_c: String, _x: int, _y: int) -> void:
+	pass
 
 
 static func _clear_resume() -> void:
@@ -124,7 +166,7 @@ func tile(x: int, y: int) -> String:
 # ---------------------------------------------------------------- level building
 
 func _parse_map() -> void:
-	var data: Array = HackData.MAP
+	var data: Array = _map_data()
 	rows = data.size()
 	for line in data:
 		cols = max(cols, line.length())
@@ -276,6 +318,8 @@ func _build_world() -> void:
 					gate_rows.append(y)
 				"S":
 					core_start = center
+				_:
+					_spawn_extra(c, x, y)
 
 	# Core-chamber gate: open until the fight starts.
 	if gate_rows.size() > 0:
@@ -304,12 +348,13 @@ func _build_world() -> void:
 	player.camera.limit_bottom = rows * TILE
 	player.camera.reset_smoothing()
 
-	core = CoreScript.new()
-	core.position = core_start
-	core.min_x = (gate_x + 4) * TILE
-	core.max_x = (cols - 4) * TILE
-	books_total += core.max_hp * CoreScript.BOOKS_PER_HIT   # every hit spills e-books
-	world.add_child(core)
+	if gate_rows.size() > 0:
+		core = CoreScript.new()
+		core.position = core_start
+		core.min_x = (gate_x + 4) * TILE
+		core.max_x = (cols - 4) * TILE
+		books_total += core.max_hp * CoreScript.BOOKS_PER_HIT   # every hit spills e-books
+		world.add_child(core)
 
 
 # ---------------------------------------------------------------- game events
@@ -372,8 +417,9 @@ func on_player_died() -> void:
 	resume_collected = collected.duplicate()
 	resume_wells = well_ink.duplicate()
 	resume_opened = opened.duplicate()
+	resume_level = level_num
 	await get_tree().create_timer(1.6).timeout
-	hud.show_message("CONNECTION LOST!", "The supercomputer kicked you out of the system...\n\nPress R or Enter to retry from your last checkpoint")
+	hud.show_message("CONNECTION LOST!", "The supercomputer kicked you out of the system...\n\nPress R or Enter to retry from your last checkpoint\nPress Esc to go back to the world map")
 
 
 func drop_book(pos: Vector2) -> void:
@@ -425,6 +471,7 @@ func on_boss_hurt(hp: int, max_hp: int) -> void:
 
 func on_boss_defeated(pos: Vector2) -> void:
 	state = "won"
+	var reward := Progress.complete_level(level_num, books_collected, books_total)
 	player.invuln = 999.0
 	hud.hide_boss_bar()
 	shake(18)
@@ -444,9 +491,10 @@ func on_boss_defeated(pos: Vector2) -> void:
 	hud.show_message("YOU HACKED THE MAINFRAME!",
 		"The Evil Book Stealer's supercomputer crashes in a shower of sparks!\n" +
 		"Every e-book downloads safely back to the Grand Library's servers.\n" +
-		"But the crash rips open a swirling TIME PORTAL... and the Book Stealer dives in!\n\n" +
+		"But the whole system is starting to CRASH, and the Book Stealer is escaping\n" +
+		"deeper inside! Catch him before everything goes dark...\n\n" +
 		"E-books recovered: %d / %d\n\n" % [books_collected, books_total] +
-		"Press Enter to jump into the portal after him!")
+		reward + "\n\nPress Enter to return to the world map")
 
 
 # ---------------------------------------------------------------- effects

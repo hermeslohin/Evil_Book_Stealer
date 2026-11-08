@@ -27,8 +27,9 @@ func _ready() -> void:
 	t = randf() * 10.0
 	var cs := CollisionShape2D.new()
 	var r := RectangleShape2D.new()
-	r.size = Vector2(24, 36)
+	r.size = Vector2(38, 45)
 	cs.shape = r
+	cs.position = Vector2(0, -4.5)
 	add_child(cs)
 	ray = RayCast2D.new()
 	ray.target_position = Vector2(0, 30)
@@ -37,7 +38,7 @@ func _ready() -> void:
 
 
 func get_top_y() -> float:
-	return global_position.y - 18.0
+	return global_position.y - 27.0
 
 
 func _physics_process(delta: float) -> void:
